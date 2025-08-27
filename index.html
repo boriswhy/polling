@@ -93,6 +93,12 @@
         const id = parts[2];
         const route = routes[hash] || renderHome;
         route(id);
+		// Hide the top nav on the vote page
+		const nav = document.querySelector('nav');
+		if (nav) {
+			if (hash === '#/vote') nav.classList.add('hidden');
+			else nav.classList.remove('hidden');
+		}
         document.querySelectorAll('nav a').forEach(a => a.classList.remove('active'));
         const active = document.querySelector(`nav a[href='${hash}']`);
         if (active) active.classList.add('active');
@@ -239,7 +245,7 @@ END $$;
           <div class="controls">
             <span class="pill">${poll.live_results ? 'Live' : (poll.poll_refresh_ms>0 ? 'Polling' : 'Manual')}</span>
             <button class="secondary" id="btnToggleQR">${poll.show_qr ? 'Hide QR' : 'Show QR'}</button>
-            <button class="secondary" id="btnToggleLive">${poll.live_results ? 'Enable live' : 'Disable live'}</button>
+            <button class="secondary" id="btnToggleLive">${poll.live_results ? 'Disable live' : 'Enable live'}</button>
             <button class="ghost" id="btnCopyLink">Copy vote link</button>
           </div>
           <div class="${rowClass}" style="margin-top:12px">
@@ -247,7 +253,7 @@ END $$;
               <canvas id="chart"></canvas>
               <div class="note">
                 Voting link: <a href="${voteUrl}" target="_blank" class="mono">${voteUrl}</a><br/>
-                Live results: ${poll.live_results ? 'Disable Live' : (poll.poll_refresh_ms ? 'Polling every ' + Math.round(poll.poll_refresh_ms/1000) + 's' : 'OFF')}
+                Live results: ${poll.live_results ? 'ON (Realtime)' : (poll.poll_refresh_ms ? 'Polling every ' + Math.round(poll.poll_refresh_ms/1000) + 's' : 'OFF')}
               </div>
             </div>
             <div id="qrWrap" class="qrbox ${poll.show_qr ? '' : 'hidden'}">
