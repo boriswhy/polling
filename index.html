@@ -21,6 +21,7 @@
     .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px;box-shadow:0 10px 24px rgba(0,0,0,.25)}
     .row{display:grid;gap:20px}
     @media(min-width:840px){.row{grid-template-columns:1fr 280px;align-items:center}}
+    .row.single{grid-template-columns:1fr !important}
     h1{margin:0 0 8px;font-size:22px}
     p.sub{margin:0 0 16px;color:var(--muted)}
     label{display:block;margin:10px 0 6px;color:var(--muted)}
@@ -37,6 +38,7 @@
     nav a{opacity:.9}
     nav a.active{font-weight:600}
     .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+    .note{font-size:12px;color:#a9b6d3;margin-top:8px}
   </style>
 </head>
 <body>
@@ -55,6 +57,14 @@
   <!-- Main app script. Runs AFTER deferred libs load. -->
   <script>
     document.addEventListener('DOMContentLoaded', () => {
+      // ---------- 0) App config (tweak freely) ----------
+      const CONFIG = {
+        SHOW_QR_BOX: false,          // hide the second (QR) section on Admin view
+        ALLOW_MULTI_SELECT: true,    // allow multiple choices on the Vote page
+        LIVE_RESULTS: true,          // if true, subscribe to Realtime; otherwise use POLL_REFRESH_MS
+        POLL_REFRESH_MS: 0           // e.g. 10000 for 10s polling when LIVE_RESULTS=false
+      };
+
       // ---------- 1) Configure Supabase (SET THESE) ----------
       const SUPABASE_URL = 'https://phfouqkgbvnrnrakjjxo.supabase.co';
       const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBoZm91cWtnYnZucm5yYWtqanhvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYyNTk2ODYsImV4cCI6MjA3MTgzNTY4Nn0.dIQuRUhATXxA083HCmWydoFmH6ip5uCQq9kq0yJhwxw';
@@ -92,10 +102,9 @@
         view.innerHTML = `
           <h1>Help</h1>
           <ol>
-            <li>Create a free Supabase project → copy the <span class="mono">Project URL</span> and <span class="mono">anon key</span> into this file.</li>
-            <li>Run the SQL from the README (below) to create tables and Realtime.</li>
-            <li>Push this file to GitHub and enable GitHub Pages.</li>
-            <li>Use <span class="mono">#/create</span> to make a poll, then share the vote link/QR.</li>
+            <li>Create a Supabase project → copy the <span class="mono">Project URL</span> and <span class="mono">anon key</span> into this file.</li>
+            <li>Run the SQL (in this page) to create tables and enable Realtime on <span class="mono">public.votes</span>.</li>
+            <li>Push to GitHub Pages and use <span class="mono">#/create</span> to make a poll.</li>
           </ol>
           <details>
             <summary>Database schema (run in Supabase SQL editor)</summary>
@@ -127,7 +136,7 @@ CREATE POLICY "Public create votes" ON public.votes FOR INSERT WITH CHECK (true)
 -- Realtime: enable for 'public' schema and table 'votes' in Supabase Dashboard → Database → Replication → Realtime.
 </pre>
           </details>
-          <p class="muted">Tip: For stricter control (unique voters, admin token), switch to serverless functions or add auth later.</p>
+          <p class="muted">Config flags (top of file): <span class="mono">SHOW_QR_BOX</span>, <span class="mono">ALLOW_MULTI_SELECT</span>, <span class="mono">LIVE_RESULTS</span>, <span class="mono">POLL_REFRESH_MS</span>.</p>
         `;
       }
 
@@ -164,21 +173,22 @@ CREATE POLICY "Public create votes" ON public.votes FOR INSERT WITH CHECK (true)
 
         // Layout
         const voteUrl = `${location.origin}${location.pathname}#/vote/${pollId}`;
+        const rowClass = CONFIG.SHOW_QR_BOX ? 'row' : 'row single';
         view.innerHTML = `
           <h1>${escapeHtml(poll.question)}</h1>
-          <p class="sub">Share the QR or link; the chart updates in real time.</p>
-          <div class="row">
-            <div><canvas id="chart"></canvas></div>
-            <div class="qrbox">
+          <p class="sub">Share the link${CONFIG.SHOW_QR_BOX ? ' or QR' : ''}; the chart updates in real time.</p>
+          <div class="${rowClass}">
+            <div><canvas id="chart"></canvas><div class="note">Live results: ${CONFIG.LIVE_RESULTS ? 'ON (Realtime)' : (CONFIG.POLL_REFRESH_MS ? 'Polling every ' + CONFIG.POLL_REFRESH_MS/1000 + 's' : 'OFF')}</div></div>
+            ${CONFIG.SHOW_QR_BOX ? `<div class="qrbox">
               <canvas id="qr" width="220" height="220"></canvas>
               <small>Voting link:</small>
               <a href="${voteUrl}" target="_blank" class="mono">${voteUrl}</a>
-            </div>
+            </div>` : ''}
           </div>
         `;
 
         // QR
-        if (window.QRCode) { window.QRCode.toCanvas(el('#qr'), voteUrl, { margin: 1, width: 220 }); }
+        if (CONFIG.SHOW_QR_BOX && window.QRCode) { window.QRCode.toCanvas(el('#qr'), voteUrl, { margin: 1, width: 220 }); }
 
         // Chart
         const ctx = document.getElementById('chart').getContext('2d');
@@ -188,7 +198,7 @@ CREATE POLICY "Public create votes" ON public.votes FOR INSERT WITH CHECK (true)
           options: { scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }, plugins: { legend: { display:false } } }
         });
 
-        // Load initial totals + realtime
+        // Load initial totals + live/polling
         async function refreshTotals() {
           const { data, error } = await sb.from('votes').select('option_index').eq('poll_id', pollId);
           if (error) { console.error('refreshTotals error:', error); return; }
@@ -201,11 +211,15 @@ CREATE POLICY "Public create votes" ON public.votes FOR INSERT WITH CHECK (true)
         }
         await refreshTotals();
 
-        sb.channel('votes-' + pollId)
-          .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'votes', filter: `poll_id=eq.${pollId}` }, async () => {
-            await refreshTotals();
-          })
-          .subscribe();
+        if (CONFIG.LIVE_RESULTS) {
+          sb.channel('votes-' + pollId)
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'votes', filter: `poll_id=eq.${pollId}` }, async () => {
+              await refreshTotals();
+            })
+            .subscribe();
+        } else if (CONFIG.POLL_REFRESH_MS > 0) {
+          setInterval(refreshTotals, CONFIG.POLL_REFRESH_MS);
+        }
       }
 
       async function renderVote(id) {
@@ -214,23 +228,64 @@ CREATE POLICY "Public create votes" ON public.votes FOR INSERT WITH CHECK (true)
         const { data: poll, error } = await sb.from('polls').select('*').eq('id', pollId).single();
         if (error || !poll) return view.innerHTML = '<p>Poll not found.</p>';
 
-        view.innerHTML = `
-          <h1>${escapeHtml(poll.question)}</h1>
-          <div class="options" id="ops"></div>
-          <p class="ok" id="ok">✅ Thanks — your vote was recorded.</p>
-        `;
-        const ops = el('#ops');
-        poll.options.forEach((opt, i) => {
-          const b = document.createElement('button');
-          b.textContent = opt;
-          b.onclick = async () => {
-            b.disabled = true; Array.from(ops.children).forEach(x => x.disabled = true);
-            const { error } = await sb.from('votes').insert({ poll_id: pollId, option_index: i });
-            if (error) { console.error(error); alert('Vote failed: ' + error.message); b.disabled = false; return; }
+        if (CONFIG.ALLOW_MULTI_SELECT) {
+          // Multi-select UI
+          view.innerHTML = `
+            <h1>${escapeHtml(poll.question)}</h1>
+            <p class="sub">You may select multiple options.</p>
+            <div id="ops" class="options"></div>
+            <div style="margin-top:8px"><button id="submitBtn">Submit vote</button></div>
+            <p class="ok" id="ok">✅ Thanks — your votes were recorded.</p>
+          `;
+          const ops = el('#ops');
+          poll.options.forEach((opt, i) => {
+            const label = document.createElement('label');
+            label.style.display = 'flex';
+            label.style.gap = '10px';
+            label.style.alignItems = 'center';
+            const cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.className = 'opt';
+            cb.dataset.idx = String(i);
+            label.appendChild(cb);
+            const span = document.createElement('span');
+            span.textContent = opt;
+            label.appendChild(span);
+            ops.appendChild(label);
+          });
+          el('#submitBtn').onclick = async () => {
+            const chosen = Array.from(document.querySelectorAll('.opt'))
+              .filter(x => x.checked)
+              .map(x => Number(x.dataset.idx));
+            if (chosen.length === 0) return alert('Please select at least one option.');
+            // Insert one row per selected option
+            const payload = chosen.map(idx => ({ poll_id: pollId, option_index: idx }));
+            const { error } = await sb.from('votes').insert(payload);
+            if (error) { console.error(error); alert('Vote failed: ' + error.message); return; }
             el('#ok').style.display = 'block';
+            el('#submitBtn').disabled = true;
+            document.querySelectorAll('.opt').forEach(x => x.disabled = true);
           };
-          ops.appendChild(b);
-        });
+        } else {
+          // Single-select UI (previous behavior)
+          view.innerHTML = `
+            <h1>${escapeHtml(poll.question)}</h1>
+            <div class="options" id="ops"></div>
+            <p class="ok" id="ok">✅ Thanks — your vote was recorded.</p>
+          `;
+          const ops = el('#ops');
+          poll.options.forEach((opt, i) => {
+            const b = document.createElement('button');
+            b.textContent = opt;
+            b.onclick = async () => {
+              b.disabled = true; Array.from(ops.children).forEach(x => x.disabled = true);
+              const { error } = await sb.from('votes').insert({ poll_id: pollId, option_index: i });
+              if (error) { console.error(error); alert('Vote failed: ' + error.message); b.disabled = false; return; }
+              el('#ok').style.display = 'block';
+            };
+            ops.appendChild(b);
+          });
+        }
       }
 
       // ---------- 4) Utils ----------
@@ -265,6 +320,7 @@ CREATE POLICY "Public create votes" ON public.votes FOR INSERT WITH CHECK (true)
     .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px;box-shadow:0 10px 24px rgba(0,0,0,.25)}
     .row{display:grid;gap:20px}
     @media(min-width:840px){.row{grid-template-columns:1fr 280px;align-items:center}}
+    .row.single{grid-template-columns:1fr !important}
     h1{margin:0 0 8px;font-size:22px}
     p.sub{margin:0 0 16px;color:var(--muted)}
     label{display:block;margin:10px 0 6px;color:var(--muted)}
@@ -281,6 +337,7 @@ CREATE POLICY "Public create votes" ON public.votes FOR INSERT WITH CHECK (true)
     nav a{opacity:.9}
     nav a.active{font-weight:600}
     .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+    .note{font-size:12px;color:#a9b6d3;margin-top:8px}
   </style>
 </head>
 <body>
@@ -299,9 +356,17 @@ CREATE POLICY "Public create votes" ON public.votes FOR INSERT WITH CHECK (true)
   <!-- Main app script. Runs AFTER deferred libs load. -->
   <script>
     document.addEventListener('DOMContentLoaded', () => {
+      // ---------- 0) App config (tweak freely) ----------
+      const CONFIG = {
+        SHOW_QR_BOX: false,          // hide the second (QR) section on Admin view
+        ALLOW_MULTI_SELECT: true,    // allow multiple choices on the Vote page
+        LIVE_RESULTS: true,          // if true, subscribe to Realtime; otherwise use POLL_REFRESH_MS
+        POLL_REFRESH_MS: 0           // e.g. 10000 for 10s polling when LIVE_RESULTS=false
+      };
+
       // ---------- 1) Configure Supabase (SET THESE) ----------
-      const SUPABASE_URL = 'https://phfouqkgbvnrnrakjjxo.supabase.co';
-      const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBoZm91cWtnYnZucm5yYWtqanhvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYyNTk2ODYsImV4cCI6MjA3MTgzNTY4Nn0.dIQuRUhATXxA083HCmWydoFmH6ip5uCQq9kq0yJhwxw';
+      const SUPABASE_URL = 'https://YOUR-PROJECT.supabase.co';
+      const SUPABASE_ANON_KEY = 'YOUR-ANON-KEY';
       const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         auth: { persistSession: false, autoRefreshToken: false, storageKey: 'polling_no_session' }
       });
@@ -336,10 +401,9 @@ CREATE POLICY "Public create votes" ON public.votes FOR INSERT WITH CHECK (true)
         view.innerHTML = `
           <h1>Help</h1>
           <ol>
-            <li>Create a free Supabase project → copy the <span class="mono">Project URL</span> and <span class="mono">anon key</span> into this file.</li>
-            <li>Run the SQL from the README (below) to create tables and Realtime.</li>
-            <li>Push this file to GitHub and enable GitHub Pages.</li>
-            <li>Use <span class="mono">#/create</span> to make a poll, then share the vote link/QR.</li>
+            <li>Create a Supabase project → copy the <span class="mono">Project URL</span> and <span class="mono">anon key</span> into this file.</li>
+            <li>Run the SQL (in this page) to create tables and enable Realtime on <span class="mono">public.votes</span>.</li>
+            <li>Push to GitHub Pages and use <span class="mono">#/create</span> to make a poll.</li>
           </ol>
           <details>
             <summary>Database schema (run in Supabase SQL editor)</summary>
@@ -371,7 +435,7 @@ CREATE POLICY "Public create votes" ON public.votes FOR INSERT WITH CHECK (true)
 -- Realtime: enable for 'public' schema and table 'votes' in Supabase Dashboard → Database → Replication → Realtime.
 </pre>
           </details>
-          <p class="muted">Tip: For stricter control (unique voters, admin token), switch to serverless functions or add auth later.</p>
+          <p class="muted">Config flags (top of file): <span class="mono">SHOW_QR_BOX</span>, <span class="mono">ALLOW_MULTI_SELECT</span>, <span class="mono">LIVE_RESULTS</span>, <span class="mono">POLL_REFRESH_MS</span>.</p>
         `;
       }
 
@@ -408,21 +472,22 @@ CREATE POLICY "Public create votes" ON public.votes FOR INSERT WITH CHECK (true)
 
         // Layout
         const voteUrl = `${location.origin}${location.pathname}#/vote/${pollId}`;
+        const rowClass = CONFIG.SHOW_QR_BOX ? 'row' : 'row single';
         view.innerHTML = `
           <h1>${escapeHtml(poll.question)}</h1>
-          <p class="sub">Share the QR or link; the chart updates in real time.</p>
-          <div class="row">
-            <div><canvas id="chart"></canvas></div>
-            <div class="qrbox">
+          <p class="sub">Share the link${CONFIG.SHOW_QR_BOX ? ' or QR' : ''}; the chart updates in real time.</p>
+          <div class="${rowClass}">
+            <div><canvas id="chart"></canvas><div class="note">Live results: ${CONFIG.LIVE_RESULTS ? 'ON (Realtime)' : (CONFIG.POLL_REFRESH_MS ? 'Polling every ' + CONFIG.POLL_REFRESH_MS/1000 + 's' : 'OFF')}</div></div>
+            ${CONFIG.SHOW_QR_BOX ? `<div class="qrbox">
               <canvas id="qr" width="220" height="220"></canvas>
               <small>Voting link:</small>
               <a href="${voteUrl}" target="_blank" class="mono">${voteUrl}</a>
-            </div>
+            </div>` : ''}
           </div>
         `;
 
         // QR
-        if (window.QRCode) { window.QRCode.toCanvas(el('#qr'), voteUrl, { margin: 1, width: 220 }); }
+        if (CONFIG.SHOW_QR_BOX && window.QRCode) { window.QRCode.toCanvas(el('#qr'), voteUrl, { margin: 1, width: 220 }); }
 
         // Chart
         const ctx = document.getElementById('chart').getContext('2d');
@@ -432,7 +497,7 @@ CREATE POLICY "Public create votes" ON public.votes FOR INSERT WITH CHECK (true)
           options: { scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }, plugins: { legend: { display:false } } }
         });
 
-        // Load initial totals + realtime
+        // Load initial totals + live/polling
         async function refreshTotals() {
           const { data, error } = await sb.from('votes').select('option_index').eq('poll_id', pollId);
           if (error) { console.error('refreshTotals error:', error); return; }
@@ -445,11 +510,15 @@ CREATE POLICY "Public create votes" ON public.votes FOR INSERT WITH CHECK (true)
         }
         await refreshTotals();
 
-        sb.channel('votes-' + pollId)
-          .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'votes', filter: `poll_id=eq.${pollId}` }, async () => {
-            await refreshTotals();
-          })
-          .subscribe();
+        if (CONFIG.LIVE_RESULTS) {
+          sb.channel('votes-' + pollId)
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'votes', filter: `poll_id=eq.${pollId}` }, async () => {
+              await refreshTotals();
+            })
+            .subscribe();
+        } else if (CONFIG.POLL_REFRESH_MS > 0) {
+          setInterval(refreshTotals, CONFIG.POLL_REFRESH_MS);
+        }
       }
 
       async function renderVote(id) {
@@ -458,23 +527,64 @@ CREATE POLICY "Public create votes" ON public.votes FOR INSERT WITH CHECK (true)
         const { data: poll, error } = await sb.from('polls').select('*').eq('id', pollId).single();
         if (error || !poll) return view.innerHTML = '<p>Poll not found.</p>';
 
-        view.innerHTML = `
-          <h1>${escapeHtml(poll.question)}</h1>
-          <div class="options" id="ops"></div>
-          <p class="ok" id="ok">✅ Thanks — your vote was recorded.</p>
-        `;
-        const ops = el('#ops');
-        poll.options.forEach((opt, i) => {
-          const b = document.createElement('button');
-          b.textContent = opt;
-          b.onclick = async () => {
-            b.disabled = true; Array.from(ops.children).forEach(x => x.disabled = true);
-            const { error } = await sb.from('votes').insert({ poll_id: pollId, option_index: i });
-            if (error) { console.error(error); alert('Vote failed: ' + error.message); b.disabled = false; return; }
+        if (CONFIG.ALLOW_MULTI_SELECT) {
+          // Multi-select UI
+          view.innerHTML = `
+            <h1>${escapeHtml(poll.question)}</h1>
+            <p class="sub">You may select multiple options.</p>
+            <div id="ops" class="options"></div>
+            <div style="margin-top:8px"><button id="submitBtn">Submit vote</button></div>
+            <p class="ok" id="ok">✅ Thanks — your votes were recorded.</p>
+          `;
+          const ops = el('#ops');
+          poll.options.forEach((opt, i) => {
+            const label = document.createElement('label');
+            label.style.display = 'flex';
+            label.style.gap = '10px';
+            label.style.alignItems = 'center';
+            const cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.className = 'opt';
+            cb.dataset.idx = String(i);
+            label.appendChild(cb);
+            const span = document.createElement('span');
+            span.textContent = opt;
+            label.appendChild(span);
+            ops.appendChild(label);
+          });
+          el('#submitBtn').onclick = async () => {
+            const chosen = Array.from(document.querySelectorAll('.opt'))
+              .filter(x => x.checked)
+              .map(x => Number(x.dataset.idx));
+            if (chosen.length === 0) return alert('Please select at least one option.');
+            // Insert one row per selected option
+            const payload = chosen.map(idx => ({ poll_id: pollId, option_index: idx }));
+            const { error } = await sb.from('votes').insert(payload);
+            if (error) { console.error(error); alert('Vote failed: ' + error.message); return; }
             el('#ok').style.display = 'block';
+            el('#submitBtn').disabled = true;
+            document.querySelectorAll('.opt').forEach(x => x.disabled = true);
           };
-          ops.appendChild(b);
-        });
+        } else {
+          // Single-select UI (previous behavior)
+          view.innerHTML = `
+            <h1>${escapeHtml(poll.question)}</h1>
+            <div class="options" id="ops"></div>
+            <p class="ok" id="ok">✅ Thanks — your vote was recorded.</p>
+          `;
+          const ops = el('#ops');
+          poll.options.forEach((opt, i) => {
+            const b = document.createElement('button');
+            b.textContent = opt;
+            b.onclick = async () => {
+              b.disabled = true; Array.from(ops.children).forEach(x => x.disabled = true);
+              const { error } = await sb.from('votes').insert({ poll_id: pollId, option_index: i });
+              if (error) { console.error(error); alert('Vote failed: ' + error.message); b.disabled = false; return; }
+              el('#ok').style.display = 'block';
+            };
+            ops.appendChild(b);
+          });
+        }
       }
 
       // ---------- 4) Utils ----------
