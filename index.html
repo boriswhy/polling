@@ -247,7 +247,7 @@ END $$;
               <canvas id="chart"></canvas>
               <div class="note">
                 Voting link: <a href="${voteUrl}" target="_blank" class="mono">${voteUrl}</a><br/>
-                Live results: ${poll.live_results ? 'ON (Realtime)' : (poll.poll_refresh_ms ? 'Polling every ' + Math.round(poll.poll_refresh_ms/1000) + 's' : 'OFF')}
+                Live results: ${poll.live_results ? 'Disable Live' : (poll.poll_refresh_ms ? 'Polling every ' + Math.round(poll.poll_refresh_ms/1000) + 's' : 'OFF')}
               </div>
             </div>
             <div id="qrWrap" class="qrbox ${poll.show_qr ? '' : 'hidden'}">
@@ -310,7 +310,7 @@ END $$;
 
         el('#btnToggleLive')?.addEventListener('click', async () => {
           poll.live_results = !poll.live_results;
-          el('#btnToggleLive').textContent = poll.live_results ? 'Enable live' : 'Disable live';
+          el('#btnToggleLive').textContent = poll.live_results ? 'Disable live' : 'Enable live';
           await savePatch({ live_results: poll.live_results });
           startLive();
         });
