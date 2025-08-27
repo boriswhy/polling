@@ -7,8 +7,10 @@
   <!-- Libraries (deferred) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode/1.4.4/qrcode.min.js" defer
-	onerror="(function(){var s=document.createElement('script');s.src='https://unpkg.com/qrcode@1.3.0/build/qrcode.min.js';s.defer=true;document.head.appendChild(s);}())">
+  <script
+    src="https://cdnjs.cloudflare.com/ajax/libs/qrcode/1.4.4/qrcode.min.js"
+    defer
+    onerror="(function(){var s=document.createElement('script');s.src='https://unpkg.com/qrcode@1.3.0/build/qrcode.min.js';s.defer=true;document.head.appendChild(s);}())">
   </script>
   <style>
     :root { --bg:#0b1020; --card:#121a33; --muted:#a9b6d3; --accent:#8dc6ff; --border:#1f2a4a; --ok:#90ee90; }
@@ -29,9 +31,8 @@
     .ok{color:var(--ok);margin-top:10px;display:none}
     canvas{width:100%;height:380px}
     .qrbox{display:flex;flex-direction:column;gap:8px;align-items:center;padding:12px;background:#0e1530;border:1px dashed var(--border);border-radius:12px}
-	.qrbox a {display:block;max-width:100%;word-break:break-all;overflow-wrap:anywhere;text-align:center;}
+    .qrbox a{display:block;max-width:100%;word-break:break-all;overflow-wrap:anywhere;text-align:center}
     .muted{color:var(--muted)}
-    .center{display:flex;justify-content:center}
     .hdr{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
     nav a{opacity:.9}
     nav a.active{font-weight:600}
@@ -51,35 +52,31 @@
     <div id="view" class="card">Loading…</div>
   </div>
 
-  <!-- Main app script. Wrap everything so it runs AFTER deferred libs load. -->
+  <!-- Main app script. Runs AFTER deferred libs load. -->
   <script>
     document.addEventListener('DOMContentLoaded', () => {
-      // ---------- 1) Configure Supabase ----------
+      // ---------- 1) Configure Supabase (SET THESE) ----------
       const SUPABASE_URL = 'https://phfouqkgbvnrnrakjjxo.supabase.co';
       const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBoZm91cWtnYnZucm5yYWtqanhvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYyNTk2ODYsImV4cCI6MjA3MTgzNTY4Nn0.dIQuRUhATXxA083HCmWydoFmH6ip5uCQq9kq0yJhwxw';
       const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-		  auth: { persistSession: false, autoRefreshToken: false, storageKey: 'polling_no_session' }
-		});
+        auth: { persistSession: false, autoRefreshToken: false, storageKey: 'polling_no_session' }
+      });
 
       // ---------- 2) Mini router ----------
       const el = sel => document.querySelector(sel);
       const view = el('#view');
-      const routes = {
-        '#/create': renderCreate,
-        '#/admin': renderAdmin,
-        '#/vote': renderVote,
-        '#/help': renderHelp,
-      };
-	  function go() {
-	    const [hash, id] = location.hash.split('/').slice(0, 3); // '#/admin', 'uuid'
-	    const route = routes[hash] || renderHome;
-	    route(id);
-	    
-	    // highlight nav
-	    document.querySelectorAll('nav a').forEach(a => a.classList.remove('active'));
-	    const active = document.querySelector(`nav a[href='${hash}']`);
-	    if (active) active.classList.add('active');
-	  }
+      const routes = { '#/create': renderCreate, '#/admin': renderAdmin, '#/vote': renderVote, '#/help': renderHelp };
+      function go() {
+        const parts = location.hash.split('/');
+        const hash = parts.slice(0,2).join('/'); // e.g. #/admin
+        const id = parts[2];
+        const route = routes[hash] || renderHome;
+        route(id);
+        // highlight nav
+        document.querySelectorAll('nav a').forEach(a => a.classList.remove('active'));
+        const active = document.querySelector(`nav a[href='${hash}']`);
+        if (active) active.classList.add('active');
+      }
       window.addEventListener('hashchange', go);
 
       // ---------- 3) Views ----------
@@ -151,7 +148,7 @@ CREATE POLICY "Public create votes" ON public.votes FOR INSERT WITH CHECK (true)
           const options = el('#opts').value.split(',').map(s => s.trim()).filter(Boolean);
           if (!question || options.length < 2) return alert('Please provide a question and at least 2 options.');
           const { data, error } = await sb.from('polls').insert({ question, options }).select('id').single();
-          if (error) return alert('Create failed: ' + error.message);
+          if (error) { console.error(error); return alert('Create failed: ' + error.message); }
           el('#msg').style.display = 'block';
           location.hash = `#/admin/${data.id}`;
         };
@@ -181,7 +178,7 @@ CREATE POLICY "Public create votes" ON public.votes FOR INSERT WITH CHECK (true)
         `;
 
         // QR
-        window.QRCode.toCanvas(el('#qr'), voteUrl, { margin: 1, width: 220 });
+        if (window.QRCode) { window.QRCode.toCanvas(el('#qr'), voteUrl, { margin: 1, width: 220 }); }
 
         // Chart
         const ctx = document.getElementById('chart').getContext('2d');
@@ -191,33 +188,21 @@ CREATE POLICY "Public create votes" ON public.votes FOR INSERT WITH CHECK (true)
           options: { scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }, plugins: { legend: { display:false } } }
         });
 
-        // Load initial totals
-		async function refreshTotals() {
-		  const { data, error } = await sb
-			.from('votes')
-			.select('option_index')
-			.eq('poll_id', pollId);
-
-		  if (error) {
-			console.error('refreshTotals error:', error);
-			return;
-		  }
-
-		  const counts = Array(poll.options.length).fill(0);
-		  (data || []).forEach(r => {
-			if (Number.isInteger(r.option_index) && r.option_index >= 0 && r.option_index < counts.length) {
-			  counts[r.option_index] += 1;
-			}
-		  });
-
-		  chart.data.datasets[0].data = counts;
-		  chart.update();
-		}
+        // Load initial totals + realtime
+        async function refreshTotals() {
+          const { data, error } = await sb.from('votes').select('option_index').eq('poll_id', pollId);
+          if (error) { console.error('refreshTotals error:', error); return; }
+          const counts = Array(poll.options.length).fill(0);
+          (data || []).forEach(r => {
+            if (Number.isInteger(r.option_index) && r.option_index >= 0 && r.option_index < counts.length) counts[r.option_index] += 1;
+          });
+          chart.data.datasets[0].data = counts;
+          chart.update();
+        }
         await refreshTotals();
 
-        // Realtime subscribe to new votes
         sb.channel('votes-' + pollId)
-          .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'votes', filter: `poll_id=eq.${pollId}` }, async (_payload) => {
+          .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'votes', filter: `poll_id=eq.${pollId}` }, async () => {
             await refreshTotals();
           })
           .subscribe();
@@ -241,7 +226,251 @@ CREATE POLICY "Public create votes" ON public.votes FOR INSERT WITH CHECK (true)
           b.onclick = async () => {
             b.disabled = true; Array.from(ops.children).forEach(x => x.disabled = true);
             const { error } = await sb.from('votes').insert({ poll_id: pollId, option_index: i });
-            if (error) { alert('Vote failed: ' + error.message); b.disabled = false; return; }
+            if (error) { console.error(error); alert('Vote failed: ' + error.message); b.disabled = false; return; }
+            el('#ok').style.display = 'block';
+          };
+          ops.appendChild(b);
+        });
+      }
+
+      // ---------- 4) Utils ----------
+      function escapeHtml(s=''){return s.replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]))}
+
+      // Boot the router
+      go();
+    });
+  </script>
+</body>
+</html>
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Live Poll (GitHub Pages + Supabase)</title>
+  <!-- Libraries (deferred) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
+  <script
+    src="https://cdnjs.cloudflare.com/ajax/libs/qrcode/1.4.4/qrcode.min.js"
+    defer
+    onerror="(function(){var s=document.createElement('script');s.src='https://unpkg.com/qrcode@1.3.0/build/qrcode.min.js';s.defer=true;document.head.appendChild(s);}())">
+  </script>
+  <style>
+    :root { --bg:#0b1020; --card:#121a33; --muted:#a9b6d3; --accent:#8dc6ff; --border:#1f2a4a; --ok:#90ee90; }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial,Helvetica,sans-serif;background:var(--bg);color:#e9eef6}
+    a{color:var(--accent)}
+    .wrap{max-width:960px;margin:40px auto;padding:0 16px}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px;box-shadow:0 10px 24px rgba(0,0,0,.25)}
+    .row{display:grid;gap:20px}
+    @media(min-width:840px){.row{grid-template-columns:1fr 280px;align-items:center}}
+    h1{margin:0 0 8px;font-size:22px}
+    p.sub{margin:0 0 16px;color:var(--muted)}
+    label{display:block;margin:10px 0 6px;color:var(--muted)}
+    input,textarea{width:100%;padding:10px;border-radius:10px;border:1px solid var(--border);background:#0e1530;color:#e9eef6}
+    button{padding:12px 16px;border-radius:12px;border:1px solid var(--border);background:#192246;color:#e9eef6;cursor:pointer}
+    button:hover{background:#1f2a59}
+    .options{display:grid;gap:10px}
+    .ok{color:var(--ok);margin-top:10px;display:none}
+    canvas{width:100%;height:380px}
+    .qrbox{display:flex;flex-direction:column;gap:8px;align-items:center;padding:12px;background:#0e1530;border:1px dashed var(--border);border-radius:12px}
+    .qrbox a{display:block;max-width:100%;word-break:break-all;overflow-wrap:anywhere;text-align:center}
+    .muted{color:var(--muted)}
+    .hdr{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+    nav a{opacity:.9}
+    nav a.active{font-weight:600}
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="hdr">
+      <div style="font-weight:600">📊 Live Poll</div>
+      <nav style="display:flex;gap:10px">
+        <a href="#/create" id="link-create">Create</a>
+        <a href="#/help" id="link-help">Help</a>
+      </nav>
+    </div>
+
+    <div id="view" class="card">Loading…</div>
+  </div>
+
+  <!-- Main app script. Runs AFTER deferred libs load. -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // ---------- 1) Configure Supabase (SET THESE) ----------
+      const SUPABASE_URL = 'https://phfouqkgbvnrnrakjjxo.supabase.co';
+      const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBoZm91cWtnYnZucm5yYWtqanhvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYyNTk2ODYsImV4cCI6MjA3MTgzNTY4Nn0.dIQuRUhATXxA083HCmWydoFmH6ip5uCQq9kq0yJhwxw';
+      const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        auth: { persistSession: false, autoRefreshToken: false, storageKey: 'polling_no_session' }
+      });
+
+      // ---------- 2) Mini router ----------
+      const el = sel => document.querySelector(sel);
+      const view = el('#view');
+      const routes = { '#/create': renderCreate, '#/admin': renderAdmin, '#/vote': renderVote, '#/help': renderHelp };
+      function go() {
+        const parts = location.hash.split('/');
+        const hash = parts.slice(0,2).join('/'); // e.g. #/admin
+        const id = parts[2];
+        const route = routes[hash] || renderHome;
+        route(id);
+        // highlight nav
+        document.querySelectorAll('nav a').forEach(a => a.classList.remove('active'));
+        const active = document.querySelector(`nav a[href='${hash}']`);
+        if (active) active.classList.add('active');
+      }
+      window.addEventListener('hashchange', go);
+
+      // ---------- 3) Views ----------
+      function renderHome() {
+        view.innerHTML = `
+          <h1>Welcome</h1>
+          <p class="sub">Host your live poll front‑end on <strong>GitHub Pages</strong> with realtime via <strong>Supabase</strong>. No custom server needed.</p>
+          <p>Get started at <a href="#/create">Create</a> or read <a href="#/help">Help</a>.</p>
+        `;
+      }
+
+      function renderHelp() {
+        view.innerHTML = `
+          <h1>Help</h1>
+          <ol>
+            <li>Create a free Supabase project → copy the <span class="mono">Project URL</span> and <span class="mono">anon key</span> into this file.</li>
+            <li>Run the SQL from the README (below) to create tables and Realtime.</li>
+            <li>Push this file to GitHub and enable GitHub Pages.</li>
+            <li>Use <span class="mono">#/create</span> to make a poll, then share the vote link/QR.</li>
+          </ol>
+          <details>
+            <summary>Database schema (run in Supabase SQL editor)</summary>
+            <pre class="mono" style="white-space:pre-wrap">CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+CREATE TABLE IF NOT EXISTS public.polls (
+  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  question text NOT NULL,
+  options jsonb NOT NULL CHECK (jsonb_typeof(options) = 'array'),
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.votes (
+  id bigserial PRIMARY KEY,
+  poll_id uuid NOT NULL REFERENCES public.polls(id) ON DELETE CASCADE,
+  option_index int NOT NULL CHECK (option_index >= 0),
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.polls ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.votes ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Public read polls" ON public.polls FOR SELECT USING (true);
+CREATE POLICY "Public create polls" ON public.polls FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Public read votes" ON public.votes FOR SELECT USING (true);
+CREATE POLICY "Public create votes" ON public.votes FOR INSERT WITH CHECK (true);
+
+-- Realtime: enable for 'public' schema and table 'votes' in Supabase Dashboard → Database → Replication → Realtime.
+</pre>
+          </details>
+          <p class="muted">Tip: For stricter control (unique voters, admin token), switch to serverless functions or add auth later.</p>
+        `;
+      }
+
+      async function renderCreate() {
+        view.innerHTML = `
+          <h1>Create a Poll</h1>
+          <label>Question</label>
+          <input id="q" placeholder="Your question" />
+          <label>Options (comma separated)</label>
+          <input id="opts" placeholder="Red, Green, Blue" />
+          <div style="margin-top:12px">
+            <button id="btn">Create</button>
+          </div>
+          <p id="msg" class="ok">Created!</p>
+        `;
+        el('#btn').onclick = async () => {
+          const question = el('#q').value.trim();
+          const options = el('#opts').value.split(',').map(s => s.trim()).filter(Boolean);
+          if (!question || options.length < 2) return alert('Please provide a question and at least 2 options.');
+          const { data, error } = await sb.from('polls').insert({ question, options }).select('id').single();
+          if (error) { console.error(error); return alert('Create failed: ' + error.message); }
+          el('#msg').style.display = 'block';
+          location.hash = `#/admin/${data.id}`;
+        };
+      }
+
+      async function renderAdmin(id) {
+        const pollId = id || location.hash.split('/')[2];
+        if (!pollId) return view.innerHTML = '<p>Missing poll id.</p>';
+
+        // Load poll
+        const { data: poll, error } = await sb.from('polls').select('*').eq('id', pollId).single();
+        if (error || !poll) return view.innerHTML = '<p>Poll not found.</p>';
+
+        // Layout
+        const voteUrl = `${location.origin}${location.pathname}#/vote/${pollId}`;
+        view.innerHTML = `
+          <h1>${escapeHtml(poll.question)}</h1>
+          <p class="sub">Share the QR or link; the chart updates in real time.</p>
+          <div class="row">
+            <div><canvas id="chart"></canvas></div>
+            <div class="qrbox">
+              <canvas id="qr" width="220" height="220"></canvas>
+              <small>Voting link:</small>
+              <a href="${voteUrl}" target="_blank" class="mono">${voteUrl}</a>
+            </div>
+          </div>
+        `;
+
+        // QR
+        if (window.QRCode) { window.QRCode.toCanvas(el('#qr'), voteUrl, { margin: 1, width: 220 }); }
+
+        // Chart
+        const ctx = document.getElementById('chart').getContext('2d');
+        const chart = new window.Chart(ctx, {
+          type: 'bar',
+          data: { labels: poll.options, datasets: [{ label: 'Votes', data: poll.options.map(_ => 0) }] },
+          options: { scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }, plugins: { legend: { display:false } } }
+        });
+
+        // Load initial totals + realtime
+        async function refreshTotals() {
+          const { data, error } = await sb.from('votes').select('option_index').eq('poll_id', pollId);
+          if (error) { console.error('refreshTotals error:', error); return; }
+          const counts = Array(poll.options.length).fill(0);
+          (data || []).forEach(r => {
+            if (Number.isInteger(r.option_index) && r.option_index >= 0 && r.option_index < counts.length) counts[r.option_index] += 1;
+          });
+          chart.data.datasets[0].data = counts;
+          chart.update();
+        }
+        await refreshTotals();
+
+        sb.channel('votes-' + pollId)
+          .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'votes', filter: `poll_id=eq.${pollId}` }, async () => {
+            await refreshTotals();
+          })
+          .subscribe();
+      }
+
+      async function renderVote(id) {
+        const pollId = id || location.hash.split('/')[2];
+        if (!pollId) return view.innerHTML = '<p>Missing poll id.</p>';
+        const { data: poll, error } = await sb.from('polls').select('*').eq('id', pollId).single();
+        if (error || !poll) return view.innerHTML = '<p>Poll not found.</p>';
+
+        view.innerHTML = `
+          <h1>${escapeHtml(poll.question)}</h1>
+          <div class="options" id="ops"></div>
+          <p class="ok" id="ok">✅ Thanks — your vote was recorded.</p>
+        `;
+        const ops = el('#ops');
+        poll.options.forEach((opt, i) => {
+          const b = document.createElement('button');
+          b.textContent = opt;
+          b.onclick = async () => {
+            b.disabled = true; Array.from(ops.children).forEach(x => x.disabled = true);
+            const { error } = await sb.from('votes').insert({ poll_id: pollId, option_index: i });
+            if (error) { console.error(error); alert('Vote failed: ' + error.message); b.disabled = false; return; }
             el('#ok').style.display = 'block';
           };
           ops.appendChild(b);
