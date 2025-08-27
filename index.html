@@ -239,7 +239,7 @@ END $$;
           <div class="controls">
             <span class="pill">${poll.live_results ? 'Live' : (poll.poll_refresh_ms>0 ? 'Polling' : 'Manual')}</span>
             <button class="secondary" id="btnToggleQR">${poll.show_qr ? 'Hide QR' : 'Show QR'}</button>
-            <button class="secondary" id="btnToggleLive">${poll.live_results ? 'Disable live' : 'Enable live'}</button>
+            <button class="secondary" id="btnToggleLive">${poll.live_results ? 'Enable live' : 'Disable live'}</button>
             <button class="ghost" id="btnCopyLink">Copy vote link</button>
           </div>
           <div class="${rowClass}" style="margin-top:12px">
@@ -310,7 +310,7 @@ END $$;
 
         el('#btnToggleLive')?.addEventListener('click', async () => {
           poll.live_results = !poll.live_results;
-          el('#btnToggleLive').textContent = poll.live_results ? 'Disable live' : 'Enable live';
+          el('#btnToggleLive').textContent = poll.live_results ? 'Enable live' : 'Disable live';
           await savePatch({ live_results: poll.live_results });
           startLive();
         });
