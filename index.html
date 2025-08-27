@@ -7,7 +7,11 @@
   <!-- Libraries (deferred) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
-  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js" defer></script>
+  <script
+	  src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"
+	  defer
+	  onerror="var s=document.createElement('script');s.src='https://unpkg.com/qrcode@1.5.4/build/qrcode.min.js';s.defer=true;document.head.appendChild(s)">
+  </script>
   <style>
     :root { --bg:#0b1020; --card:#121a33; --muted:#a9b6d3; --accent:#8dc6ff; --border:#1f2a4a; --ok:#90ee90; }
     *{box-sizing:border-box}
@@ -52,8 +56,8 @@
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       // ---------- 1) Configure Supabase ----------
-      const SUPABASE_URL = 'https://YOUR-PROJECT.supabase.co';
-      const SUPABASE_ANON_KEY = 'YOUR-ANON-KEY';
+      const SUPABASE_URL = 'https://phfouqkgbvnrnrakjjxo.supabase.co';
+      const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBoZm91cWtnYnZucm5yYWtqanhvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYyNTk2ODYsImV4cCI6MjA3MTgzNTY4Nn0.dIQuRUhATXxA083HCmWydoFmH6ip5uCQq9kq0yJhwxw';
       const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: false } });
 
       // ---------- 2) Mini router ----------
@@ -249,7 +253,11 @@ CREATE POLICY "Public create votes" ON public.votes FOR INSERT WITH CHECK (true)
   <!-- Libraries (deferred) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
-  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js" defer></script>
+  <script
+	  src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"
+	  defer
+	  onerror="var s=document.createElement('script');s.src='https://unpkg.com/qrcode@1.5.4/build/qrcode.min.js';s.defer=true;document.head.appendChild(s)">
+  </script>
   <style>
     :root { --bg:#0b1020; --card:#121a33; --muted:#a9b6d3; --accent:#8dc6ff; --border:#1f2a4a; --ok:#90ee90; }
     *{box-sizing:border-box}
@@ -294,8 +302,8 @@ CREATE POLICY "Public create votes" ON public.votes FOR INSERT WITH CHECK (true)
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       // ---------- 1) Configure Supabase ----------
-      const SUPABASE_URL = 'https://phfouqkgbvnrnrakjjxo.supabase.co';
-      const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBoZm91cWtnYnZucm5yYWtqanhvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYyNTk2ODYsImV4cCI6MjA3MTgzNTY4Nn0.dIQuRUhATXxA083HCmWydoFmH6ip5uCQq9kq0yJhwxw';
+      const SUPABASE_URL = 'https://YOUR-PROJECT.supabase.co';
+      const SUPABASE_ANON_KEY = 'YOUR-ANON-KEY';
       const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: false } });
 
       // ---------- 2) Mini router ----------
