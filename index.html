@@ -64,7 +64,7 @@
 <body>
   <div class="wrap">
     <div class="hdr">
-      <div class="brand">📊 Live Poll <span class="badge">v20250827</span></div>
+      <div class="brand">📊 Live Poll <span class="badge">Bright UI</span></div>
       <nav style="display:flex;gap:10px;margin-left:auto">
         <a href="#/create" id="link-create">Create</a>
         <a href="#/help" id="link-help">Help</a>
@@ -258,7 +258,8 @@ END $$;
             </div>
             <div id="qrWrap" class="qrbox ${poll.show_qr ? '' : 'hidden'}">
               <canvas id="qr" width="220" height="220"></canvas>
-              <small>Scan the above QR to vote</small>
+              <small>Voting link:</small>
+              <a href="${voteUrl}" target="_blank" class="mono">${voteUrl}</a>
             </div>
           </div>
         `;
