@@ -8,9 +8,7 @@
   <!-- Libraries (deferred) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
-  <script
-    src="https://cdnjs.cloudflare.com/ajax/libs/qrcode/1.4.4/qrcode.min.js"
-    defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode/1.4.4/qrcode.min.js" defer></script>
 
   <style>
     :root { --bg:#0b1020; --card:#121a33; --muted:#a9b6d3; --accent:#8dc6ff; --border:#1f2a4a; --ok:#90ee90; }
@@ -26,8 +24,10 @@
     p.sub{margin:0 0 16px;color:var(--muted)}
     label{display:block;margin:10px 0 6px;color:var(--muted)}
     input,textarea{width:100%;padding:10px;border-radius:10px;border:1px solid var(--border);background:#0e1530;color:#e9eef6}
-    button{padding:12px 16px;border-radius:12px;border:1px solid var(--border);background:#192246;color:#e9eef6;cursor:pointer}
+    input[type=number]{max-width:160px}
+    button{padding:10px 14px;border-radius:10px;border:1px solid var(--border);background:#192246;color:#e9eef6;cursor:pointer}
     button:hover{background:#1f2a59}
+    .btnrow{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
     .options{display:grid;gap:10px}
     .ok{color:var(--ok);margin-top:10px;display:none}
     canvas{width:100%;height:380px}
@@ -39,6 +39,8 @@
     nav a.active{font-weight:600}
     .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
     .note{font-size:12px;color:#a9b6d3;margin-top:8px}
+    .switch{display:flex;gap:8px;align-items:center}
+    .pill{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border:1px solid var(--border);border-radius:999px;font-size:12px;color:#a9b6d3}
   </style>
 </head>
 <body>
@@ -54,17 +56,8 @@
     <div id="view" class="card">Loading…</div>
   </div>
 
-  <!-- Main app script. Runs AFTER deferred libs load. -->
   <script>
     document.addEventListener('DOMContentLoaded', () => {
-      // ---------- 0) App config ----------
-      const CONFIG = {
-        SHOW_QR_BOX: false,          // hide the QR box on Admin view
-        ALLOW_MULTI_SELECT: true,    // allow multiple selections on Vote page
-        LIVE_RESULTS: true,          // realtime ON/OFF
-        POLL_REFRESH_MS: 0           // when LIVE_RESULTS=false, set e.g. 10000 for 10s polling
-      };
-
       // ---------- 1) Supabase (SET THESE) ----------
       const SUPABASE_URL = 'https://phfouqkgbvnrnrakjjxo.supabase.co';
       const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBoZm91cWtnYnZucm5yYWtqanhvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYyNTk2ODYsImV4cCI6MjA3MTgzNTY4Nn0.dIQuRUhATXxA083HCmWydoFmH6ip5uCQq9kq0yJhwxw';
@@ -72,13 +65,13 @@
         auth: { persistSession: false, autoRefreshToken: false, storageKey: 'polling_no_session' }
       });
 
-      // ---------- 2) Mini router ----------
+      // ---------- 2) Router ----------
       const el = sel => document.querySelector(sel);
       const view = el('#view');
       const routes = { '#/create': renderCreate, '#/admin': renderAdmin, '#/vote': renderVote, '#/help': renderHelp };
       function go() {
         const parts = location.hash.split('/');
-        const hash = parts.slice(0,2).join('/'); // e.g. #/admin
+        const hash = parts.slice(0,2).join('/');
         const id = parts[2];
         const route = routes[hash] || renderHome;
         route(id);
@@ -92,7 +85,7 @@
       function renderHome() {
         view.innerHTML = `
           <h1>Welcome</h1>
-          <p class="sub">Host your live poll front-end on <strong>GitHub Pages</strong> with realtime via <strong>Supabase</strong>. No custom server needed.</p>
+          <p class="sub">Host your live poll front‑end on <strong>GitHub Pages</strong> with realtime via <strong>Supabase</strong>. No custom server needed.</p>
           <p>Get started at <a href="#/create">Create</a> or read <a href="#/help">Help</a>.</p>
         `;
       }
@@ -102,18 +95,26 @@
           <h1>Help</h1>
           <ol>
             <li>Put your <span class="mono">Project URL</span> and <span class="mono">anon key</span> at the top of this file.</li>
-            <li>In Supabase SQL Editor, run the schema below and enable Realtime on <span class="mono">public.votes</span>.</li>
-            <li>Push to GitHub Pages, then use <span class="mono">#/create</span> to make a poll.</li>
+            <li>Run the schema (below) and enable Realtime on <span class="mono">public.votes</span>.</li>
+            <li>Use <span class="mono">#/create</span> to make a poll → share Admin/Vote links.</li>
           </ol>
           <details>
             <summary>Database schema (run in Supabase SQL editor)</summary>
-<pre class="mono" style="white-space:pre-wrap">CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+<pre class="mono" style="white-space:pre-wrap">-- Core tables
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 CREATE TABLE IF NOT EXISTS public.polls (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   question text NOT NULL,
   options jsonb NOT NULL CHECK (jsonb_typeof(options) = 'array'),
-  created_at timestamptz NOT NULL DEFAULT now()
+  -- Config stored in DB
+  allow_multi_select boolean NOT NULL DEFAULT true,
+  max_selections int NULL,
+  live_results boolean NOT NULL DEFAULT true,
+  poll_refresh_ms int NOT NULL DEFAULT 0,
+  show_qr boolean NOT NULL DEFAULT false,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS public.votes (
@@ -123,20 +124,36 @@ CREATE TABLE IF NOT EXISTS public.votes (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
+-- Indexes
+CREATE INDEX IF NOT EXISTS votes_poll_option_idx ON public.votes(poll_id, option_index);
+
+-- RLS
 ALTER TABLE public.polls ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.votes ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Public read polls"  ON public.polls FOR SELECT USING (true);
-CREATE POLICY "Public create polls" ON public.polls FOR INSERT WITH CHECK (true);
+-- Demo policies (open). Tighten for production.
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Public read polls') THEN
+    CREATE POLICY "Public read polls"  ON public.polls FOR SELECT USING (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Public create polls') THEN
+    CREATE POLICY "Public create polls" ON public.polls FOR INSERT WITH CHECK (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Public update polls') THEN
+    CREATE POLICY "Public update polls" ON public.polls FOR UPDATE USING (true) WITH CHECK (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Public read votes') THEN
+    CREATE POLICY "Public read votes"   ON public.votes FOR SELECT USING (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Public create votes') THEN
+    CREATE POLICY "Public create votes" ON public.votes FOR INSERT WITH CHECK (true);
+  END IF;
+END $$;
 
-CREATE POLICY "Public read votes"   ON public.votes FOR SELECT USING (true);
-CREATE POLICY "Public create votes" ON public.votes FOR INSERT WITH CHECK (true);
-
-/* Realtime: enable for schema 'public' and table 'votes'
-   in Dashboard → Database → Replication → Realtime. */
+-- Realtime: enable for schema 'public' and table 'votes'
 </pre>
           </details>
-          <p class="muted">Config flags (top of file): <span class="mono">SHOW_QR_BOX</span>, <span class="mono">ALLOW_MULTI_SELECT</span>, <span class="mono">LIVE_RESULTS</span>, <span class="mono">POLL_REFRESH_MS</span>.</p>
+          <p class="muted">Admin page now has buttons to toggle QR and live results; all settings persist in <span class="mono">polls</span>.</p>
         `;
       }
 
@@ -147,17 +164,40 @@ CREATE POLICY "Public create votes" ON public.votes FOR INSERT WITH CHECK (true)
           <input id="q" placeholder="Your question" />
           <label>Options (comma separated)</label>
           <input id="opts" placeholder="Red, Green, Blue" />
-          <div style="margin-top:12px">
-            <button id="btn">Create</button>
+          <div class="btnrow">
+            <label class="switch"><input type="checkbox" id="multi" checked /> Allow multiple select</label>
+            <label>Max selections (0 = unlimited) <input type="number" id="maxsel" min="0" value="0" /></label>
           </div>
+          <div class="btnrow">
+            <label class="switch"><input type="checkbox" id="live" checked /> Live results (Realtime)</label>
+            <label>Polling ms (when live off) <input type="number" id="pollms" min="0" value="0" /></label>
+            <label class="switch"><input type="checkbox" id="qrDefault" /> Show QR by default</label>
+          </div>
+          <div style="margin-top:12px"><button id="btn">Create</button></div>
           <p id="msg" class="ok">Created!</p>
         `;
+        const maxsel = el('#maxsel');
+        el('#multi').addEventListener('change', () => {
+          maxsel.disabled = !el('#multi').checked;
+        });
+        maxsel.disabled = !el('#multi').checked;
+
         el('#btn').onclick = async () => {
           const question = el('#q').value.trim();
           const options = el('#opts').value.split(',').map(s => s.trim()).filter(Boolean);
           if (!question || options.length < 2) return alert('Please provide a question and at least 2 options.');
           el('#btn').disabled = true;
-          const { data, error } = await sb.from('polls').insert({ question, options }).select('id').single();
+          const allow_multi_select = el('#multi').checked;
+          const max_selections = Number(maxsel.value) || null; // null means unlimited
+          const live_results = el('#live').checked;
+          const poll_refresh_ms = Number(el('#pollms').value) || 0;
+          const show_qr = el('#qrDefault').checked;
+          const { data, error } = await sb.from('polls').insert({
+            question, options,
+            allow_multi_select, max_selections,
+            live_results, poll_refresh_ms,
+            show_qr
+          }).select('id').single();
           el('#btn').disabled = false;
           if (error) { console.error(error); return alert('Create failed: ' + error.message); }
           el('#msg').style.display = 'block';
@@ -170,33 +210,50 @@ CREATE POLICY "Public create votes" ON public.votes FOR INSERT WITH CHECK (true)
         if (!pollId) return view.innerHTML = '<p>Missing poll id.</p>';
 
         // Load poll
-        const { data: poll, error } = await sb.from('polls').select('*').eq('id', pollId).single();
+        let { data: poll, error } = await sb.from('polls').select('*').eq('id', pollId).single();
         if (error || !poll) return view.innerHTML = '<p>Poll not found.</p>';
 
-        // Layout
+        // Helpers to persist partial changes
+        async function savePatch(patch){
+          patch.updated_at = new Date().toISOString();
+          const { error } = await sb.from('polls').update(patch).eq('id', pollId);
+          if (error) console.error('Update failed:', error);
+        }
+
         const voteUrl = `${location.origin}${location.pathname}#/vote/${pollId}`;
-        const rowClass = CONFIG.SHOW_QR_BOX ? 'row' : 'row single';
+        const rowClass = poll.show_qr ? 'row' : 'row single';
         view.innerHTML = `
           <h1>${escapeHtml(poll.question)}</h1>
-          <p class="sub">Share the link${CONFIG.SHOW_QR_BOX ? ' or QR' : ''}; the chart updates in real time.</p>
+          <div class="pill">Mode: <strong>${poll.live_results ? 'LIVE' : (poll.poll_refresh_ms>0 ? 'POLLING' : 'MANUAL')}</strong></div>
+          <div class="btnrow">
+            <button id="btnToggleQR">${poll.show_qr ? 'Hide QR' : 'Show QR'}</button>
+            <button id="btnToggleLive">${poll.live_results ? 'Disable live' : 'Enable live'}</button>
+            <button id="btnCopyLink">Copy vote link</button>
+          </div>
           <div class="${rowClass}">
             <div>
               <canvas id="chart"></canvas>
-              <div class="note">Live results: ${CONFIG.LIVE_RESULTS ? 'ON (Realtime)' : (CONFIG.POLL_REFRESH_MS ? 'Polling every ' + CONFIG.POLL_REFRESH_MS/1000 + 's' : 'OFF')}</div>
+              <div class="note">
+                Voting link: <a href="${voteUrl}" target="_blank" class="mono">${voteUrl}</a><br/>
+                Live results: ${poll.live_results ? 'ON (Realtime)' : (poll.poll_refresh_ms ? 'Polling every ' + Math.round(poll.poll_refresh_ms/1000) + 's' : 'OFF')}
+              </div>
             </div>
-            ${CONFIG.SHOW_QR_BOX ? `
-            <div class="qrbox">
+            <div id="qrWrap" class="qrbox" ${poll.show_qr ? '' : 'hidden'}>
               <canvas id="qr" width="220" height="220"></canvas>
               <small>Voting link:</small>
               <a href="${voteUrl}" target="_blank" class="mono">${voteUrl}</a>
-            </div>` : ''}
+            </div>
           </div>
         `;
 
-        // QR (best-effort)
-        if (CONFIG.SHOW_QR_BOX && window.QRCode) {
-          try { window.QRCode.toCanvas(el('#qr'), voteUrl, { margin: 1, width: 220 }); } catch (_) {}
+        // QR render (on demand)
+        function ensureQR(){
+          if (!poll.show_qr) return;
+          if (window.QRCode && el('#qr')) {
+            try { window.QRCode.toCanvas(el('#qr'), voteUrl, { margin: 1, width: 220 }); } catch(_){}
+          }
         }
+        ensureQR();
 
         // Chart
         const ctx = document.getElementById('chart').getContext('2d');
@@ -206,71 +263,79 @@ CREATE POLICY "Public create votes" ON public.votes FOR INSERT WITH CHECK (true)
           options: { scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }, plugins: { legend: { display:false } } }
         });
 
-        // Load totals + live/polling
-        async function refreshTotals() {
+        // Totals + realtime/polling control
+        async function refreshTotals(){
           const { data, error } = await sb.from('votes').select('option_index').eq('poll_id', pollId);
           if (error) { console.error('refreshTotals error:', error); return; }
           const counts = Array(poll.options.length).fill(0);
-          (data || []).forEach(r => {
-            if (Number.isInteger(r.option_index) && r.option_index >= 0 && r.option_index < counts.length) counts[r.option_index] += 1;
-          });
-          chart.data.datasets[0].data = counts;
-          chart.update();
+          (data||[]).forEach(r=>{ if(Number.isInteger(r.option_index) && r.option_index>=0 && r.option_index<counts.length) counts[r.option_index]++; });
+          chart.data.datasets[0].data = counts; chart.update();
         }
         await refreshTotals();
 
-        if (CONFIG.LIVE_RESULTS) {
-          sb.channel('votes-' + pollId)
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'votes', filter: `poll_id=eq.${pollId}` }, refreshTotals)
-            .subscribe();
-        } else if (CONFIG.POLL_REFRESH_MS > 0) {
-          setInterval(refreshTotals, CONFIG.POLL_REFRESH_MS);
-        }
+        let channel = null, timer = null;
+        function stopLive(){ if(channel){ sb.removeChannel(channel); channel=null; } if(timer){ clearInterval(timer); timer=null; } }
+        function startLive(){ stopLive(); if(poll.live_results){ channel = sb.channel('votes-'+pollId).on('postgres_changes',{event:'INSERT',schema:'public',table:'votes',filter:`poll_id=eq.${pollId}`},refreshTotals).subscribe(); } else if (poll.poll_refresh_ms>0){ timer=setInterval(refreshTotals, poll.poll_refresh_ms); } }
+        startLive();
+
+        // Buttons
+        el('#btnToggleQR').onclick = async () => {
+          poll.show_qr = !poll.show_qr;
+          const wrap = el('#qrWrap');
+          if (poll.show_qr) { wrap.hidden = false; ensureQR(); } else { wrap.hidden = true; }
+          el('#btnToggleQR').textContent = poll.show_qr ? 'Hide QR' : 'Show QR';
+          await savePatch({ show_qr: poll.show_qr });
+        };
+        el('#btnToggleLive').onclick = async () => {
+          poll.live_results = !poll.live_results;
+          el('#btnToggleLive').textContent = poll.live_results ? 'Disable live' : 'Enable live';
+          await savePatch({ live_results: poll.live_results });
+          startLive();
+        };
+        el('#btnCopyLink').onclick = async () => {
+          try { await navigator.clipboard.writeText(voteUrl); el('#btnCopyLink').textContent = 'Copied!'; setTimeout(()=> el('#btnCopyLink').textContent = 'Copy vote link', 1200); } catch(_){}
+        };
       }
 
       async function renderVote(id) {
         const pollId = id || location.hash.split('/')[2];
         if (!pollId) return view.innerHTML = '<p>Missing poll id.</p>';
-
         const { data: poll, error } = await sb.from('polls').select('*').eq('id', pollId).single();
         if (error || !poll) return view.innerHTML = '<p>Poll not found.</p>';
 
-        if (CONFIG.ALLOW_MULTI_SELECT) {
+        if (poll.allow_multi_select) {
           // Multi-select UI
           view.innerHTML = `
             <h1>${escapeHtml(poll.question)}</h1>
-            <p class="sub">You may select multiple options.</p>
+            <p class="sub">You may select multiple options${poll.max_selections ? ` (up to ${poll.max_selections}).` : '.'}</p>
             <div id="ops" class="options"></div>
-            <div style="margin-top:8px"><button id="submitBtn">Submit vote</button></div>
+            <div class="btnrow"><button id="submitBtn">Submit vote</button></div>
             <p class="ok" id="ok">✅ Thanks — your votes were recorded.</p>
           `;
           const ops = el('#ops');
           poll.options.forEach((opt, i) => {
             const label = document.createElement('label');
-            label.style.display = 'flex';
-            label.style.gap = '10px';
-            label.style.alignItems = 'center';
-            const cb = document.createElement('input');
-            cb.type = 'checkbox';
-            cb.className = 'opt';
-            cb.dataset.idx = String(i);
-            label.appendChild(cb);
-            const span = document.createElement('span');
-            span.textContent = opt;
-            label.appendChild(span);
+            label.style.display = 'flex'; label.style.gap = '10px'; label.style.alignItems = 'center';
+            const cb = document.createElement('input'); cb.type = 'checkbox'; cb.className = 'opt'; cb.dataset.idx = String(i);
+            label.appendChild(cb); const span = document.createElement('span'); span.textContent = opt; label.appendChild(span);
             ops.appendChild(label);
           });
+          function enforceLimit(){
+            if (!poll.max_selections || poll.max_selections<=0) return;
+            const boxes = Array.from(document.querySelectorAll('.opt'));
+            const selected = boxes.filter(b=>b.checked);
+            boxes.forEach(b=>{ b.disabled = !b.checked && selected.length >= poll.max_selections; });
+          }
+          ops.addEventListener('change', enforceLimit);
           el('#submitBtn').onclick = async () => {
-            const chosen = Array.from(document.querySelectorAll('.opt'))
-              .filter(x => x.checked)
-              .map(x => Number(x.dataset.idx));
-            if (chosen.length === 0) return alert('Please select at least one option.');
+            const chosen = Array.from(document.querySelectorAll('.opt')).filter(x=>x.checked).map(x=>Number(x.dataset.idx));
+            if (chosen.length===0) return alert('Please select at least one option.');
+            if (poll.max_selections && chosen.length>poll.max_selections) return alert(`Please select up to ${poll.max_selections}.`);
             el('#submitBtn').disabled = true;
             const payload = chosen.map(idx => ({ poll_id: pollId, option_index: idx }));
             const { error } = await sb.from('votes').insert(payload);
             if (error) { console.error(error); alert('Vote failed: ' + error.message); el('#submitBtn').disabled = false; return; }
-            el('#ok').style.display = 'block';
-            document.querySelectorAll('.opt').forEach(x => x.disabled = true);
+            el('#ok').style.display = 'block'; document.querySelectorAll('.opt').forEach(x=>x.disabled=true);
           };
         } else {
           // Single-select UI
@@ -281,12 +346,11 @@ CREATE POLICY "Public create votes" ON public.votes FOR INSERT WITH CHECK (true)
           `;
           const ops = el('#ops');
           poll.options.forEach((opt, i) => {
-            const b = document.createElement('button');
-            b.textContent = opt;
+            const b = document.createElement('button'); b.textContent = opt;
             b.onclick = async () => {
-              b.disabled = true; Array.from(ops.children).forEach(x => x.disabled = true);
+              b.disabled = true; Array.from(ops.children).forEach(x=>x.disabled=true);
               const { error } = await sb.from('votes').insert({ poll_id: pollId, option_index: i });
-              if (error) { console.error(error); alert('Vote failed: ' + error.message); b.disabled = false; return; }
+              if (error) { console.error(error); alert('Vote failed: ' + error.message); b.disabled=false; return; }
               el('#ok').style.display = 'block';
             };
             ops.appendChild(b);
@@ -295,7 +359,7 @@ CREATE POLICY "Public create votes" ON public.votes FOR INSERT WITH CHECK (true)
       }
 
       // ---------- 4) Utils ----------
-      function escapeHtml(s=''){return s.replace(/[&<>\"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+      function escapeHtml(s=''){return s.replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]))}
 
       // Boot the router
       go();
