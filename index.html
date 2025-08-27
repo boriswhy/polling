@@ -11,43 +11,61 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode/1.4.4/qrcode.min.js" defer></script>
 
   <style>
-    :root { --bg:#0b1020; --card:#121a33; --muted:#a9b6d3; --accent:#8dc6ff; --border:#1f2a4a; --ok:#90ee90; }
+    :root{
+      --bg:#f7fafc; /* light */
+      --bg-grad:linear-gradient(180deg,#ffffff 0%,#f7fafc 100%);
+      --card:#ffffff;
+      --text:#0f172a; /* slate-900 */
+      --muted:#475569; /* slate-600 */
+      --accent:#2563eb; /* blue-600 */
+      --accent-2:#7c3aed; /* violet-600 */
+      --border:#e2e8f0; /* slate-200 */
+      --ok:#16a34a; /* green-600 */
+      --danger:#dc2626; /* red-600 */
+      --chip:#eef2ff; /* indigo-50 */
+    }
     *{box-sizing:border-box}
-    body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial,Helvetica,sans-serif;background:var(--bg);color:#e9eef6}
-    a{color:var(--accent)}
-    .wrap{max-width:960px;margin:40px auto;padding:0 16px}
-    .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px;box-shadow:0 10px 24px rgba(0,0,0,.25)}
+    body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial,Helvetica,sans-serif;background:var(--bg-grad);color:var(--text)}
+    a{color:var(--accent);text-decoration:none}
+    a:hover{text-decoration:underline}
+    .wrap{max-width:980px;margin:32px auto;padding:0 16px}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:22px;box-shadow:0 8px 24px rgba(2,6,23,.06)}
     .row{display:grid;gap:20px}
-    @media(min-width:840px){.row{grid-template-columns:1fr 280px;align-items:center}}
+    @media(min-width:880px){.row{grid-template-columns:1fr 300px;align-items:start}}
     .row.single{grid-template-columns:1fr !important}
-    h1{margin:0 0 8px;font-size:22px}
+    h1{margin:0 0 10px;font-size:26px}
     p.sub{margin:0 0 16px;color:var(--muted)}
     label{display:block;margin:10px 0 6px;color:var(--muted)}
-    input,textarea{width:100%;padding:10px;border-radius:10px;border:1px solid var(--border);background:#0e1530;color:#e9eef6}
-    input[type=number]{max-width:160px}
-    button{padding:10px 14px;border-radius:10px;border:1px solid var(--border);background:#192246;color:#e9eef6;cursor:pointer}
-    button:hover{background:#1f2a59}
-    .btnrow{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+    input,textarea{width:100%;padding:12px;border-radius:12px;border:1px solid var(--border);background:#fff;color:var(--text)}
+    input[type=number]{max-width:180px}
+    button{padding:10px 14px;border-radius:12px;border:1px solid var(--border);background:var(--accent);color:#fff;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.05)}
+    button.secondary{background:#fff;color:var(--text)}
+    button.ghost{background:transparent;border-color:var(--border);color:var(--text)}
+    button:hover{filter:brightness(1.04)}
+    .btnrow{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0}
     .options{display:grid;gap:10px}
     .ok{color:var(--ok);margin-top:10px;display:none}
     canvas{width:100%;height:380px}
-    .qrbox{display:flex;flex-direction:column;gap:8px;align-items:center;padding:12px;background:#0e1530;border:1px dashed var(--border);border-radius:12px}
+    .qrbox{display:flex;flex-direction:column;gap:8px;align-items:center;padding:14px;background:#fff;border:1px dashed var(--border);border-radius:14px}
     .qrbox a{display:block;max-width:100%;word-break:break-all;overflow-wrap:anywhere;text-align:center}
     .muted{color:var(--muted)}
     .hdr{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
-    nav a{opacity:.9}
-    nav a.active{font-weight:600}
+    .brand{display:flex;align-items:center;gap:10px;font-weight:700}
+    .badge{background:var(--chip);color:#3730a3;border:1px solid #e0e7ff;border-radius:999px;padding:4px 10px;font-size:12px}
+    nav a{opacity:.9;padding:6px 10px;border-radius:10px}
+    nav a.active{background:#e0e7ff;color:#3730a3}
     .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
-    .note{font-size:12px;color:#a9b6d3;margin-top:8px}
-    .switch{display:flex;gap:8px;align-items:center}
-    .pill{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border:1px solid var(--border);border-radius:999px;font-size:12px;color:#a9b6d3}
+    .note{font-size:12px;color:var(--muted);margin-top:8px}
+    .pill{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--border);border-radius:999px;font-size:12px;background:#fff}
+    .controls{display:flex;gap:8px;flex-wrap:wrap}
+    .hidden{display:none !important}
   </style>
 </head>
 <body>
   <div class="wrap">
     <div class="hdr">
-      <div style="font-weight:600">📊 Live Poll</div>
-      <nav style="display:flex;gap:10px">
+      <div class="brand">📊 Live Poll <span class="badge">Bright UI</span></div>
+      <nav style="display:flex;gap:10px;margin-left:auto">
         <a href="#/create" id="link-create">Create</a>
         <a href="#/help" id="link-help">Help</a>
       </nav>
@@ -84,9 +102,9 @@
       // ---------- 3) Views ----------
       function renderHome() {
         view.innerHTML = `
-          <h1>Welcome</h1>
-          <p class="sub">Host your live poll front‑end on <strong>GitHub Pages</strong> with realtime via <strong>Supabase</strong>. No custom server needed.</p>
-          <p>Get started at <a href="#/create">Create</a> or read <a href="#/help">Help</a>.</p>
+          <h1>Create your first poll</h1>
+          <p class="sub">Host on <strong>GitHub Pages</strong>, store data in <strong>Supabase</strong>, and see <strong>live results</strong>.
+          Start at <a href="#/create">Create</a> or check <a href="#/help">Help</a>.</p>
         `;
       }
 
@@ -95,8 +113,8 @@
           <h1>Help</h1>
           <ol>
             <li>Put your <span class="mono">Project URL</span> and <span class="mono">anon key</span> at the top of this file.</li>
-            <li>Run the schema (below) and enable Realtime on <span class="mono">public.votes</span>.</li>
-            <li>Use <span class="mono">#/create</span> to make a poll → share Admin/Vote links.</li>
+            <li>Run the schema below, and enable Realtime on <span class="mono">public.votes</span>.</li>
+            <li>Use <span class="mono">#/create</span> to make a poll.</li>
           </ol>
           <details>
             <summary>Database schema (run in Supabase SQL editor)</summary>
@@ -107,7 +125,6 @@ CREATE TABLE IF NOT EXISTS public.polls (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   question text NOT NULL,
   options jsonb NOT NULL CHECK (jsonb_typeof(options) = 'array'),
-  -- Config stored in DB
   allow_multi_select boolean NOT NULL DEFAULT true,
   max_selections int NULL,
   live_results boolean NOT NULL DEFAULT true,
@@ -124,14 +141,11 @@ CREATE TABLE IF NOT EXISTS public.votes (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
--- Indexes
 CREATE INDEX IF NOT EXISTS votes_poll_option_idx ON public.votes(poll_id, option_index);
 
--- RLS
 ALTER TABLE public.polls ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.votes ENABLE ROW LEVEL SECURITY;
 
--- Demo policies (open). Tighten for production.
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Public read polls') THEN
     CREATE POLICY "Public read polls"  ON public.polls FOR SELECT USING (true);
@@ -150,10 +164,10 @@ DO $$ BEGIN
   END IF;
 END $$;
 
--- Realtime: enable for schema 'public' and table 'votes'
+-- Realtime: enable schema 'public' and table 'votes'
 </pre>
           </details>
-          <p class="muted">Admin page now has buttons to toggle QR and live results; all settings persist in <span class="mono">polls</span>.</p>
+          <p class="note">If live updates still don't appear, re-check Realtime is enabled and your poll row has <span class="mono">live_results=true</span>.</p>
         `;
       }
 
@@ -169,26 +183,24 @@ END $$;
             <label>Max selections (0 = unlimited) <input type="number" id="maxsel" min="0" value="0" /></label>
           </div>
           <div class="btnrow">
-            <label class="switch"><input type="checkbox" id="live" checked /> Live results (Realtime)</label>
+            <label class="switch"><input type="checkbox" id="live" checked /> Live results</label>
             <label>Polling ms (when live off) <input type="number" id="pollms" min="0" value="0" /></label>
             <label class="switch"><input type="checkbox" id="qrDefault" /> Show QR by default</label>
           </div>
-          <div style="margin-top:12px"><button id="btn">Create</button></div>
+          <div class="btnrow"><button id="btn">Create</button></div>
           <p id="msg" class="ok">Created!</p>
         `;
         const maxsel = el('#maxsel');
-        el('#multi').addEventListener('change', () => {
-          maxsel.disabled = !el('#multi').checked;
-        });
+        el('#multi').addEventListener('change', () => { maxsel.disabled = !el('#multi').checked; });
         maxsel.disabled = !el('#multi').checked;
 
-        el('#btn').onclick = async () => {
+        el('#btn').addEventListener('click', async () => {
           const question = el('#q').value.trim();
           const options = el('#opts').value.split(',').map(s => s.trim()).filter(Boolean);
           if (!question || options.length < 2) return alert('Please provide a question and at least 2 options.');
           el('#btn').disabled = true;
           const allow_multi_select = el('#multi').checked;
-          const max_selections = Number(maxsel.value) || null; // null means unlimited
+          const max_selections = Number(maxsel.value) || null;
           const live_results = el('#live').checked;
           const poll_refresh_ms = Number(el('#pollms').value) || 0;
           const show_qr = el('#qrDefault').checked;
@@ -202,7 +214,7 @@ END $$;
           if (error) { console.error(error); return alert('Create failed: ' + error.message); }
           el('#msg').style.display = 'block';
           location.hash = `#/admin/${data.id}`;
-        };
+        });
       }
 
       async function renderAdmin(id) {
@@ -224,13 +236,13 @@ END $$;
         const rowClass = poll.show_qr ? 'row' : 'row single';
         view.innerHTML = `
           <h1>${escapeHtml(poll.question)}</h1>
-          <div class="pill">Mode: <strong>${poll.live_results ? 'LIVE' : (poll.poll_refresh_ms>0 ? 'POLLING' : 'MANUAL')}</strong></div>
-          <div class="btnrow">
-            <button id="btnToggleQR">${poll.show_qr ? 'Hide QR' : 'Show QR'}</button>
-            <button id="btnToggleLive">${poll.live_results ? 'Disable live' : 'Enable live'}</button>
-            <button id="btnCopyLink">Copy vote link</button>
+          <div class="controls">
+            <span class="pill">${poll.live_results ? 'Live' : (poll.poll_refresh_ms>0 ? 'Polling' : 'Manual')}</span>
+            <button class="secondary" id="btnToggleQR">${poll.show_qr ? 'Hide QR' : 'Show QR'}</button>
+            <button class="secondary" id="btnToggleLive">${poll.live_results ? 'Disable live' : 'Enable live'}</button>
+            <button class="ghost" id="btnCopyLink">Copy vote link</button>
           </div>
-          <div class="${rowClass}">
+          <div class="${rowClass}" style="margin-top:12px">
             <div>
               <canvas id="chart"></canvas>
               <div class="note">
@@ -238,7 +250,7 @@ END $$;
                 Live results: ${poll.live_results ? 'ON (Realtime)' : (poll.poll_refresh_ms ? 'Polling every ' + Math.round(poll.poll_refresh_ms/1000) + 's' : 'OFF')}
               </div>
             </div>
-            <div id="qrWrap" class="qrbox" ${poll.show_qr ? '' : 'hidden'}>
+            <div id="qrWrap" class="qrbox ${poll.show_qr ? '' : 'hidden'}">
               <canvas id="qr" width="220" height="220"></canvas>
               <small>Voting link:</small>
               <a href="${voteUrl}" target="_blank" class="mono">${voteUrl}</a>
@@ -248,8 +260,8 @@ END $$;
 
         // QR render (on demand)
         function ensureQR(){
-          if (!poll.show_qr) return;
-          if (window.QRCode && el('#qr')) {
+          const wrap = el('#qrWrap');
+          if (wrap && !wrap.classList.contains('hidden') && window.QRCode) {
             try { window.QRCode.toCanvas(el('#qr'), voteUrl, { margin: 1, width: 220 }); } catch(_){}
           }
         }
@@ -275,26 +287,38 @@ END $$;
 
         let channel = null, timer = null;
         function stopLive(){ if(channel){ sb.removeChannel(channel); channel=null; } if(timer){ clearInterval(timer); timer=null; } }
-        function startLive(){ stopLive(); if(poll.live_results){ channel = sb.channel('votes-'+pollId).on('postgres_changes',{event:'INSERT',schema:'public',table:'votes',filter:`poll_id=eq.${pollId}`},refreshTotals).subscribe(); } else if (poll.poll_refresh_ms>0){ timer=setInterval(refreshTotals, poll.poll_refresh_ms); } }
+        function startLive(){
+          stopLive();
+          if(poll.live_results){
+            channel = sb.channel('votes-'+pollId)
+              .on('postgres_changes',{event:'INSERT',schema:'public',table:'votes',filter:`poll_id=eq.${pollId}`},refreshTotals)
+              .subscribe();
+          } else if (poll.poll_refresh_ms>0){
+            timer=setInterval(refreshTotals, poll.poll_refresh_ms);
+          }
+        }
         startLive();
 
-        // Buttons
-        el('#btnToggleQR').onclick = async () => {
+        // Buttons (robust class toggles)
+        el('#btnToggleQR')?.addEventListener('click', async () => {
           poll.show_qr = !poll.show_qr;
           const wrap = el('#qrWrap');
-          if (poll.show_qr) { wrap.hidden = false; ensureQR(); } else { wrap.hidden = true; }
+          if (poll.show_qr) { wrap.classList.remove('hidden'); ensureQR(); }
+          else { wrap.classList.add('hidden'); }
           el('#btnToggleQR').textContent = poll.show_qr ? 'Hide QR' : 'Show QR';
           await savePatch({ show_qr: poll.show_qr });
-        };
-        el('#btnToggleLive').onclick = async () => {
+        });
+
+        el('#btnToggleLive')?.addEventListener('click', async () => {
           poll.live_results = !poll.live_results;
           el('#btnToggleLive').textContent = poll.live_results ? 'Disable live' : 'Enable live';
           await savePatch({ live_results: poll.live_results });
           startLive();
-        };
-        el('#btnCopyLink').onclick = async () => {
+        });
+
+        el('#btnCopyLink')?.addEventListener('click', async () => {
           try { await navigator.clipboard.writeText(voteUrl); el('#btnCopyLink').textContent = 'Copied!'; setTimeout(()=> el('#btnCopyLink').textContent = 'Copy vote link', 1200); } catch(_){}
-        };
+        });
       }
 
       async function renderVote(id) {
@@ -327,7 +351,7 @@ END $$;
             boxes.forEach(b=>{ b.disabled = !b.checked && selected.length >= poll.max_selections; });
           }
           ops.addEventListener('change', enforceLimit);
-          el('#submitBtn').onclick = async () => {
+          el('#submitBtn').addEventListener('click', async () => {
             const chosen = Array.from(document.querySelectorAll('.opt')).filter(x=>x.checked).map(x=>Number(x.dataset.idx));
             if (chosen.length===0) return alert('Please select at least one option.');
             if (poll.max_selections && chosen.length>poll.max_selections) return alert(`Please select up to ${poll.max_selections}.`);
@@ -336,7 +360,7 @@ END $$;
             const { error } = await sb.from('votes').insert(payload);
             if (error) { console.error(error); alert('Vote failed: ' + error.message); el('#submitBtn').disabled = false; return; }
             el('#ok').style.display = 'block'; document.querySelectorAll('.opt').forEach(x=>x.disabled=true);
-          };
+          });
         } else {
           // Single-select UI
           view.innerHTML = `
@@ -346,13 +370,13 @@ END $$;
           `;
           const ops = el('#ops');
           poll.options.forEach((opt, i) => {
-            const b = document.createElement('button'); b.textContent = opt;
-            b.onclick = async () => {
+            const b = document.createElement('button'); b.textContent = opt; b.className='secondary';
+            b.addEventListener('click', async () => {
               b.disabled = true; Array.from(ops.children).forEach(x=>x.disabled=true);
               const { error } = await sb.from('votes').insert({ poll_id: pollId, option_index: i });
               if (error) { console.error(error); alert('Vote failed: ' + error.message); b.disabled=false; return; }
               el('#ok').style.display = 'block';
-            };
+            });
             ops.appendChild(b);
           });
         }
